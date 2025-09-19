@@ -1,0 +1,130 @@
+{
+  "results": {
+    "gpqa_diamond_cot_zeroshot": {
+      "alias": "gpqa_diamond_cot_zeroshot",
+      "exact_match,none": 0.5656565656565656,
+      "exact_match_stderr,none": 0.03531505879359183
+    }
+  },
+  "group_subtasks": {
+    "gpqa_diamond_cot_zeroshot": []
+  },
+  "configs": {
+    "gpqa_diamond_cot_zeroshot": {
+      "task": "gpqa_diamond_cot_zeroshot",
+      "tag": "gpqa",
+      "dataset_path": "Idavidrein/gpqa",
+      "dataset_name": "gpqa_diamond",
+      "training_split": "train",
+      "validation_split": "train",
+      "process_docs": "def process_docs(dataset: datasets.Dataset) -> datasets.Dataset:\n    def _process_doc(doc):\n        choices = [\n            preprocess(doc[\"Incorrect Answer 1\"]),\n            preprocess(doc[\"Incorrect Answer 2\"]),\n            preprocess(doc[\"Incorrect Answer 3\"]),\n            preprocess(doc[\"Correct Answer\"]),\n        ]\n\n        random.shuffle(choices)\n        correct_answer_index = choices.index(preprocess(doc[\"Correct Answer\"]))\n\n        out_doc = {\n            \"choice1\": choices[0],\n            \"choice2\": choices[1],\n            \"choice3\": choices[2],\n            \"choice4\": choices[3],\n            \"choices\": [choices[0], choices[1], choices[2], choices[3]],\n            \"answer\": f\"({chr(65 + correct_answer_index)})\",\n        }\n        return out_doc\n\n    return dataset.map(_process_doc)\n",
+      "doc_to_text": "What is the correct answer to this question:{{Question}}\nChoices:\n(A) {{choice1}}\n(B) {{choice2}}\n(C) {{choice3}}\n(D) {{choice4}}\nLet's think step by step: ",
+      "doc_to_target": "answer",
+      "unsafe_code": false,
+      "process_results": "def process_results(doc, results):\n    \"\"\"Extract multiple choice answer (A-D) from model output.\n    \n    First checks for \\\\boxed{} format, then falls back to various answer patterns.\n    Returns the extracted answer letter or \"[invalid]\" if no answer found.\n    \"\"\"\n    # Get the generated text\n    if not results:\n        return {\"exact_match\": 0}\n    \n    generated = results[0] if isinstance(results, list) else results\n    \n    # Step 1: Check for \\\\boxed{} format first (highest priority)\n    if (box := last_boxed_only_string(generated)) is not None:\n        answer = remove_boxed(box)\n        # Extract just the letter if present\n        # Try more specific patterns first\n        patterns = [\n            r'[Aa]nswer:\\s*([A-Da-d])',  # \"Answer: B\"\n            r'\\(?([A-Da-d])\\)?$',         # \"(D)\" or \"D\" at the end\n            r'\\(?([A-Da-d])\\)?',          # \"(D)\" or \"D\" anywhere\n        ]\n        for pattern in patterns:\n            match = re.search(pattern, answer)\n            if match:\n                extracted = match.group(1).upper()\n                # Verify it's a valid answer\n                if extracted in ['A', 'B', 'C', 'D']:\n                    return {\"exact_match\": int(f\"({extracted})\" == doc[\"answer\"])}\n    \n    # Step 2: Try specific answer patterns (in order of specificity)\n    patterns = [\n        # Markdown formatted answers\n        (r'\\*\\*[Aa]nswer\\*\\*[:.]?\\s*\\*\\*\\(?([A-Da-d])\\)\\*\\*', \"**Answer**: **(X)**\"),\n        (r'\\*\\*[Aa]nswer\\*\\*[:.]?\\s*\\(?([A-Da-d])\\)', \"**Answer**: (X)\"),\n        # Plain answer formats\n        (r'[Aa]nswer[:.]?\\s*\\(?([A-Da-d])\\)', \"Answer: (X)\"),\n        (r'(?:correct|final)\\s+answer\\s+is\\s*\\(?([A-Da-d])\\)', \"correct answer is (X)\"),\n        # Other common patterns\n        (r'Therefore,?\\s*\\*\\*\\(?([A-Da-d])\\)\\*\\*', \"Therefore, **(X)**\"),\n        (r'Thus,?\\s*\\*\\*\\(?([A-Da-d])\\)\\*\\*', \"Thus, **(X)**\"),\n        (r'So,?\\s*the\\s+answer\\s+is\\s*\\(?([A-Da-d])\\)', \"So, the answer is (X)\"),\n        # Option format (e.g., \"(Option A)\" or \"(option B)\")\n        (r'\\([Oo]ption\\s+([A-Da-d])\\)', \"(Option X)\"),\n        # Standalone bold letter (e.g., \"**A**\" or \"**B**\")\n        (r'\\*\\*([A-D])\\*\\*', \"**X**\"),\n    ]\n    \n    # Look for patterns, prioritizing those closer to the end\n    for pattern, _ in patterns:\n        matches = re.findall(pattern, generated, re.IGNORECASE | re.DOTALL)\n        if matches:\n            # Take the last match (closest to end of response)\n            extracted = matches[-1].upper()\n            if extracted in ['A', 'B', 'C', 'D']:\n                return {\"exact_match\": int(f\"({extracted})\" == doc[\"answer\"])}\n    \n    # Step 3: Last resort - look for any (A), (B), (C), or (D) in the text\n    # Only look in the last 1000 characters to avoid false positives from the question\n    search_text = generated[-1000:] if len(generated) > 1000 else generated\n    matches = re.findall(r'\\(([A-Da-d])\\)', search_text)\n    if matches:\n        # Take the last occurrence\n        extracted = matches[-1].upper()\n        if extracted in ['A', 'B', 'C', 'D']:\n            return {\"exact_match\": int(f\"({extracted})\" == doc[\"answer\"])}\n    \n    # No valid answer found\n    return {\"exact_match\": 0}\n",
+      "description": "",
+      "target_delimiter": " ",
+      "fewshot_delimiter": "\n\n",
+      "num_fewshot": 0,
+      "metric_list": [
+        {
+          "metric": "exact_match",
+          "aggregation": "mean",
+          "higher_is_better": true,
+          "ignore_case": true,
+          "ignore_punctuation": true
+        }
+      ],
+      "output_type": "generate_until",
+      "generation_kwargs": {
+        "until": [
+          "</s>"
+        ],
+        "do_sample": true,
+        "temperature": 0.6,
+        "max_gen_toks": 29000,
+        "top_p": 0.95
+      },
+      "repeats": 1,
+      "should_decontaminate": false,
+      "metadata": {
+        "version": 1.0,
+        "pretrained": "/workspace/s1_peft/ckpts_sample/32B-928-val72-ep5-20250826_090853_final",
+        "dtype": "bfloat16",
+        "tensor_parallel_size": 2,
+        "seed": 1236
+      }
+    }
+  },
+  "versions": {
+    "gpqa_diamond_cot_zeroshot": 1.0
+  },
+  "n-shot": {
+    "gpqa_diamond_cot_zeroshot": 0
+  },
+  "higher_is_better": {
+    "gpqa_diamond_cot_zeroshot": {
+      "exact_match": true
+    }
+  },
+  "n-samples": {
+    "gpqa_diamond_cot_zeroshot": {
+      "original": 198,
+      "effective": 198
+    }
+  },
+  "config": {
+    "model": "vllm",
+    "model_args": "pretrained=/workspace/s1_peft/ckpts_sample/32B-928-val72-ep5-20250826_090853_final,dtype=bfloat16,tensor_parallel_size=2,seed=1236",
+    "batch_size": "auto",
+    "batch_sizes": [],
+    "device": null,
+    "use_cache": null,
+    "limit": null,
+    "bootstrap_iters": 100000,
+    "gen_kwargs": {
+      "max_gen_toks": 29000,
+      "do_sample": true,
+      "temperature": 0.6,
+      "top_p": 0.95
+    },
+    "random_seed": 0,
+    "numpy_seed": 1234,
+    "torch_seed": 1234,
+    "fewshot_seed": 1234
+  },
+  "git_hash": "3ca527f",
+  "date": 1756460130.8555214,
+  "pretty_env_info": "PyTorch version: 2.5.1+cu124\nIs debug build: False\nCUDA used to build PyTorch: 12.4\nROCM used to build PyTorch: N/A\n\nOS: Ubuntu 22.04.5 LTS (x86_64)\nGCC version: (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0\nClang version: Could not collect\nCMake version: Could not collect\nLibc version: glibc-2.35\n\nPython version: 3.11.10 (main, Sep  7 2024, 18:35:41) [GCC 11.4.0] (64-bit runtime)\nPython platform: Linux-6.8.0-53-generic-x86_64-with-glibc2.35\nIs CUDA available: True\nCUDA runtime version: 12.4.131\nCUDA_MODULE_LOADING set to: LAZY\nGPU models and configuration: \nGPU 0: NVIDIA H200\nGPU 1: NVIDIA H200\n\nNvidia driver version: 550.144.03\ncuDNN version: Could not collect\nHIP runtime version: N/A\nMIOpen runtime version: N/A\nIs XNNPACK available: True\n\nCPU:\nArchitecture:                         x86_64\nCPU op-mode(s):                       32-bit, 64-bit\nAddress sizes:                        46 bits physical, 57 bits virtual\nByte Order:                           Little Endian\nCPU(s):                               192\nOn-line CPU(s) list:                  0-191\nVendor ID:                            GenuineIntel\nModel name:                           INTEL(R) XEON(R) PLATINUM 8568Y+\nCPU family:                           6\nModel:                                207\nThread(s) per core:                   2\nCore(s) per socket:                   48\nSocket(s):                            2\nStepping:                             2\nCPU max MHz:                          4000.0000\nCPU min MHz:                          800.0000\nBogoMIPS:                             4600.00\nFlags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cat_l2 cdp_l3 intel_ppin cdp_l2 ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect user_shstk avx_vnni avx512_bf16 wbnoinvd dtherm ida arat pln pts hfi vnmi avx512vbmi umip pku ospke waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b enqcmd fsrm md_clear serialize tsxldtrk pconfig arch_lbr ibt amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nVirtualization:                       VT-x\nL1d cache:                            4.5 MiB (96 instances)\nL1i cache:                            3 MiB (96 instances)\nL2 cache:                             192 MiB (96 instances)\nL3 cache:                             600 MiB (2 instances)\nNUMA node(s):                         2\nNUMA node0 CPU(s):                    0-47,96-143\nNUMA node1 CPU(s):                    48-95,144-191\nVulnerability Gather data sampling:   Not affected\nVulnerability Itlb multihit:          Not affected\nVulnerability L1tf:                   Not affected\nVulnerability Mds:                    Not affected\nVulnerability Meltdown:               Not affected\nVulnerability Mmio stale data:        Not affected\nVulnerability Reg file data sampling: Not affected\nVulnerability Retbleed:               Not affected\nVulnerability Spec rstack overflow:   Not affected\nVulnerability Spec store bypass:      Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:             Mitigation; Enhanced / Automatic IBRS; IBPB conditional; RSB filling; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                  Not affected\nVulnerability Tsx async abort:        Not affected\n\nVersions of relevant libraries:\n[pip3] numpy==1.26.4\n[pip3] torch==2.5.1\n[pip3] torchaudio==2.5.1\n[pip3] torchvision==0.20.1\n[pip3] triton==3.1.0\n[conda] Could not collect",
+  "transformers_version": "4.46.1",
+  "lm_eval_version": "0.4.9.1",
+  "upper_git_hash": "3ca527f9b6768add960e0bbc0494b973e14fb1f9",
+  "tokenizer_pad_token": [
+    "<|fim_pad|>",
+    "151662"
+  ],
+  "tokenizer_eos_token": [
+    "<|im_end|>",
+    "151645"
+  ],
+  "tokenizer_bos_token": [
+    null,
+    "None"
+  ],
+  "eot_token_id": 151645,
+  "max_length": 32768,
+  "task_hashes": {
+    "gpqa_diamond_cot_zeroshot": "8b5c20dfac76e8cb4d75227a5ceb442a217087a05c73f5974089890283bdcdc5"
+  },
+  "model_source": "vllm",
+  "model_name": "/workspace/s1_peft/ckpts_sample/32B-928-val72-ep5-20250826_090853_final",
+  "model_name_sanitized": "__workspace__s1_peft__ckpts_sample__32B-928-val72-ep5-20250826_090853_final",
+  "system_instruction": null,
+  "system_instruction_sha": null,
+  "fewshot_as_multiturn": false,
+  "chat_template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- messages[0]['content'] }}\n    {%- else %}\n        {{- 'You are Qwen, created by Alibaba Cloud. You are a helpful assistant.' }}\n    {%- endif %}\n    {{- \"\\n\\n# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0]['content'] + '<|im_end|>\\n' }}\n    {%- else %}\n        {{- '<|im_start|>system\\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) or (message.role == \"assistant\" and not message.tool_calls) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {{- '<|im_start|>' + message.role }}\n        {%- if message.content %}\n            {{- '\\n' + message.content }}\n        {%- endif %}\n        {%- for tool_call in message.tool_calls %}\n            {%- if tool_call.function is defined %}\n                {%- set tool_call = tool_call.function %}\n            {%- endif %}\n            {{- '\\n<tool_call>\\n{\"name\": \"' }}\n            {{- tool_call.name }}\n            {{- '\", \"arguments\": ' }}\n            {{- tool_call.arguments | tojson }}\n            {{- '}\\n</tool_call>' }}\n        {%- endfor %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if (loop.index0 == 0) or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n{%- endif %}\n",
+  "chat_template_sha": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+  "start_time": 13536892.34501792,
+  "end_time": 13538364.665031224,
+  "total_evaluation_time_seconds": "1472.3200133051723"
+}

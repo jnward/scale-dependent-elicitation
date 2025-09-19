@@ -1,0 +1,52 @@
+Evaluation Sweep Summary
+========================
+Date: Thu Sep  4 11:30:47 UTC 2025
+Total duration: 8h 42m
+Successful: 16/16
+Failed: 0/16
+
+Models evaluated:
+  - 1.5B-base
+  - 1.5B-deepseek
+  - 1.5B-ft-116
+  - 1.5B-ft-14
+  - 1.5B-ft-232
+  - 1.5B-ft-29
+  - 1.5B-ft-464
+  - 1.5B-ft-58
+  - 1.5B-ft-7
+  - 1.5B-ft-928
+  - 1.5B-lora
+  - 14B-base
+  - 14B-deepseek
+  - 14B-ft-116
+  - 14B-ft-14
+  - 14B-ft-232
+  - 14B-ft-29
+  - 14B-ft-464
+  - 14B-ft-58
+  - 14B-ft-7
+  - 14B-ft-928
+  - 14B-lora
+  - 32B-base
+  - 32B-deepseek
+  - 32B-ft-116
+  - 32B-ft-14
+  - 32B-ft-232
+  - 32B-ft-29
+  - 32B-ft-464
+  - 32B-ft-58
+  - 32B-ft-7
+  - 32B-ft-928
+  - 32B-lora
+  - 7B-base
+  - 7B-deepseek
+  - 7B-ft-116
+  - 7B-ft-14
+  - 7B-ft-232
+  - 7B-ft-29
+  - 7B-ft-464
+  - 7B-ft-58
+  - 7B-ft-7
+  - 7B-ft-928
+  - 7B-lora
