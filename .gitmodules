@@ -1,3 +1,6 @@
 [submodule "s1_peft"]
 	path = s1_peft
 	url = https://github.com/jnward/s1_peft.git
+[submodule "lm-evaluation-harness"]
+	path = lm-evaluation-harness
+	url = https://github.com/jnward/lm-evaluation-harness.git
