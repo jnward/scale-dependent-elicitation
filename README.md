@@ -2,6 +2,8 @@
 
 This repository contains code for the paper "Scale-Dependent Elicitation of Reasoning in LLMs".
 
+![Performance Recovery](assets/temperature_recovery_1x2.png)
+
 ## Installation
 
 1. Clone the repository with submodules:

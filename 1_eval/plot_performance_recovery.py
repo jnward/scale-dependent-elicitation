@@ -840,10 +840,13 @@ def create_recovery_1x2_plot(results: Dict):
     #              fontsize=14, fontweight='bold', y=1.02)
     plt.tight_layout()
     
-    # Save the figure
-    plot_path = PLOTS_DIR / 'temperature_recovery_1x2.pdf'
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    print(f"Graph saved as: {plot_path}")
+    # Save the figure in both PDF and PNG formats
+    plot_path_pdf = PLOTS_DIR / 'temperature_recovery_1x2.pdf'
+    plot_path_png = PLOTS_DIR / 'temperature_recovery_1x2.png'
+    plt.savefig(plot_path_pdf, dpi=300, bbox_inches='tight')
+    plt.savefig(plot_path_png, dpi=300, bbox_inches='tight')
+    print(f"Graph saved as: {plot_path_pdf}")
+    print(f"Graph saved as: {plot_path_png}")
     plt.show()
 
 
