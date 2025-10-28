@@ -1,4 +1,4 @@
-# Scale-Dependent Elicitation of Reasoning in LLMs
+# Reasoning Elicitation is Scale-Dependent
 
 This repository contains code for the paper "Reasoning Elicitation is Scale-Dependent".
 
