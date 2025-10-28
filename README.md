@@ -8,8 +8,8 @@ This repository contains code for the paper "Scale-Dependent Elicitation of Reas
 
 1. Clone the repository with submodules:
 ```bash
-git clone --recurse-submodules https://github.com/jnward/scale-dependant-elicitation.git
-cd scale-dependant-elicitation
+git clone --recurse-submodules https://github.com/jnward/scale-dependent-elicitation.git
+cd scale-dependent-elicitation
 ```
 
 2. Install Python dependencies:
